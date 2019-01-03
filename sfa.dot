@@ -1,0 +1,22 @@
+digraph structs {
+    init [shape=point label=""];
+    start [shape=diamond label="start()"];
+    show  [shape=box label="show()"];
+    system [shape=diamond label="system"];
+    next [shape=diamond label="next()"];
+    stop_after_show [shape=box label="stop()"];
+    stop_after_start [shape=box label="stop()"];
+    stop_after_next [shape=box label="stop()"];
+    finish [shape=oval label="THE END"];
+    init -> start;
+    start -> stop_after_start [label="= 0"];
+    start -> show [label="&#x2260; 0"];
+    stop_after_start -> finish;
+    show -> system;
+    system -> next [label="buffer is\nok"];
+    system -> stop_after_show [label="buffer\noverflow"];
+    stop_after_show -> start;
+    next -> show [label="&#x2260; 0"];
+    next -> stop_after_next [label="= 0"];
+    stop_after_next -> start;
+}
