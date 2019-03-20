@@ -5,6 +5,9 @@
 pre {
     background-color: lightgreen;
 }
+code {
+    background-color: lightgreen;
+}
 </style>
 </head>
 <body>
@@ -18,17 +21,17 @@ pre {
 
 <p>Let's first consider in more detail when it is natural to use sequence files.  The most common situation is to create your own file in the /proc file system.  By reading the files of this system, you can get a variety of information about the equipment used, its drivers, RAM, processes, etc.
 
-<p>It would seem that the printout of anything is the simplest task in programming.  But working in kernel mode the OS imposes many restrictions that may seem completely unimaginable to the developer of the application software.  In kernel mode, the size of the print buffer is limited by the size of a virtual memory page.  For the x86 architecture it is four kilobytes.  Therefore, a good program when printing large amounts of data must first achieve filling the buffer to the maximum, then print it, and then repeat this iteration until the data for printing is completely exhausted.  You can, of course, print character by character, which would greatly simplify everything, but we are talking about good programs.
+<p>It would seem that the printout of anything is the simplest task in programming.  But working in kernel mode the OS imposes many restrictions that may seem completely unimaginable to the developer of the application software.  In kernel mode, the size of the print buffer is limited by the size of a virtual memory page.  For the x86 architecture it is four kilobytes.  Therefore, a good program when printing large amounts of data must first achieve filling the buffer to the maximum, then print it, and then repeat this iteration until the data for printing is completely exhausted.  You can of course, print character by character, which would greatly simplify everything, but we are talking about good programs.
 
-<p>The above-mentioned sources were slightly worse than expected.  In the book, for example, some of the information turned out to be generally incorrect and that is what moved me to write this note.  Incorrect was the easiest to understand and use the information given in the form of a scheme-picture.  Using such a scheme can lead to serious errors.  Although the example in the book works correctly and follows this very scheme.  This is due to the fact that in this example, only a few bytes are printed at a time when /proc/iter is accessed.  If you use it as a template for printing texts larger than a page of memory, there will be surprises.  The above-mentioned series of articles does not contain obvious errors, but does not report on some details that are important for understanding the topic.
+<p>The above-mentioned sources were slightly worse than expected.  In the book for example, some of the information turned out to be generally incorrect and that is what moved me to write this note.  It is common to consider that information given in the form of a scheme-picture is the easiest to understand and use.  However in this book the picture related to the subject is incorrect.  Using such a scheme can lead to serious errors, although the example in the book works correctly and follows this very scheme.  This is due to the fact that in this example, only a few bytes are printed at a time when /proc/iter is accessed.  If you use it as a template for printing texts larger than a page of memory, there will be surprises.  The above-mentioned series of articles does not contain obvious errors, but does not report on some details that are important for understanding the topic.
 
 <p>So, let's first consider the correct scheme of how to work with a sequence file.
 
 <p align=center><img src="https://habrastorage.org/webt/0t/9q/lf/0t9qlfqbhu3y7x1abgwo-uc4tmu.png">
 
-<p>To work with such a file, you need to create the functions start(), stop(), next() and show().  The names of these functions can be any, I chose the shortest and corresponding in meaning.  When such functions are present and properly connected to kernel systems, they start working automatically when accessing the file associated with them in the /proc directory.  The most confusing thing is the use of the stop() function, which can be called in three different contexts.  Calling it after start() means ending the print job.  Calling it after show() means that the last print operation to the buffer (usually the seq_printf function is used for this) overflowed the page buffer and this print operation was canceled.  And its call after next() is the most interesting case that occurs when printing some data to the buffer ends and you need to either finish the job or use new data.  For example, suppose that our file in the /proc directory, when accessing it, first produces some information on block devices, and then on character ones.  First, the start() function initializes printing by block devices, and the next function() and, possibly, show() use this initialization data to print step-by-step information about the block devices.  When everything is ready, after the last call to next(), the considered call to stop() will be made, after which start() is called, which this time should already initiate further printing on character devices.
+<p>To work with such a file, you need to create the functions start(), stop(), next() and show().  The names of these functions can be any, I chose the shortest words that correspond in meaning to the actions of the functions.  When such functions are present and properly connected to kernel systems, they start working automatically when accessing the file associated with them in the /proc directory.  The most confusing thing is the use of the stop() function, which can be called in three different contexts.  Calling it after start() means ending the print job.  Calling it after show() means that the last print operation to the buffer (usually the seq_printf function is used for this) overflowed the page buffer and this print operation was canceled.  Its call after next() is the most interesting case that occurs when printing some data to the buffer ends and you need to either finish the job or use new data.  For example, suppose that our file in the /proc directory, when accessing it, first produces some information on block devices, and then on character ones.  Firstly, the start() function initializes printing for block devices, and the next() and, possibly, show() functions use this initialization data to print step-by-step information about the block devices.  When everything is ready, after the last call to next(), the considered call to stop() will be made, after which start() is called, which this time should already initiate further printing for character devices.
 
-<p>I give a slightly modified example (the contents of the file evens.c) from the article by Rob Day.  It had to replace the call of a function, which is absent in modern kernels, with its actual equivalent.  The comments are also a bit changed.
+<p>I give a slightly modified example (the contents of the file evens.c) from the article by Rob Day.  I had to replace the call of a function, which is absent in modern kernels with its actual equivalent.  The comments are also slightly changed.
 
 <pre>
 #include &lt;linux/module.h&gt;
@@ -160,7 +163,7 @@ module_exit(ct_exit);
 MODULE_LICENSE("GPL");
 </pre>
 
-<p>Functions to work with a sequence file use two pointers with overlapping functionality (this is also somewhat confusing).  One of them should point to the current object to be printed into the buffer by show() &ndash; it is `v'-pointer in the program.  The other pointer `pos' is usually used to point to the counter.
+<p>Functions to work with a sequence file use two pointers with overlapping functionality (this is also somewhat confusing).  One of them should point to the current object to be printed to the buffer by show() &ndash; it is `v'-pointer in the program.  The other pointer `pos' is usually used to point to the counter.
 
 <p>For those who may for the first time want to run their program in kernel mode, I give an example of a Makefile for a successful build.  Of course, for a successful build, you must have Linux kernel source headers in the system.
 
@@ -176,7 +179,7 @@ clean:
 
 <p>Connecting to the kernel is done with the command <code>sudo insmod evens.ko</code>, checking the functionality of the /proc/evens-file, that appeared after this, with the command <code>cat /proc/evens</code>, reading the event log explaining the system operations with the command <code>sudo cat /var/log/messages</code>.
 
-<p>To overflow the page buffer, set the limit parameter to a larger value, for example, 200.  This value can be entered into the text of the program or used when loading the module &ndash; <code>sudo insmod events.ko limit=200</code>.
+<p>To overflow the page buffer, set the limit parameter to a larger value, for example, 200.  This value can be entered into the text of the program or used when loading the module with a command <code>sudo insmod events.ko limit=200</code>.
 
 <p>Log analysis can explain the remaining unclear points.  For example, you may notice that before calling stop() after next() or start(), the system zeroes the variable `v'.  You may also notice that before calling start() after stop(), the system prints the contents of the buffer.
 
