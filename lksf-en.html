@@ -27,7 +27,7 @@ code {
 
 <p>So, let's first consider the correct scheme of how to work with a sequence file.
 
-<p align=center><img src="https://habrastorage.org/webt/0t/9q/lf/0t9qlfqbhu3y7x1abgwo-uc4tmu.png">
+<p align=center><img src=sfa.png>
 
 <p>To work with such a file, you need to create the functions start(), stop(), next() and show().  The names of these functions can be any, I chose the shortest words that correspond in meaning to the actions of the functions.  When such functions are present and properly connected to kernel systems, they start working automatically when accessing the file associated with them in the /proc directory.  The most confusing thing is the use of the stop() function, which can be called in three different contexts.  Calling it after start() means ending the print job.  Calling it after show() means that the last print operation to the buffer (usually the seq_printf function is used for this) overflowed the page buffer and this print operation was canceled.  Its call after next() is the most interesting case that occurs when printing some data to the buffer ends and you need to either finish the job or use new data.  For example, suppose that our file in the /proc directory, when accessing it, first produces some information on block devices, and then on character ones.  Firstly, the start() function initializes printing for block devices, and the next() and, possibly, show() functions use this initialization data to print step-by-step information about the block devices.  When everything is ready, after the last call to next(), the considered call to stop() will be made, after which start() is called, which this time should already initiate further printing for character devices.
 
@@ -189,5 +189,5 @@ clean:
 </body>
 <br>
 <hr>
-<p>The article is published on <a href=https://habr.com/ru/post/444620/>habr.com</a>.
+<p>The article is published on <a href=https://habr.com/ru/post/444620>habr.com</a>.
 
